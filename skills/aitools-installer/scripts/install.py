@@ -144,7 +144,7 @@ def get_remote_url(repo_dir):
     except:
         return None
 
-def install_tool(repo_url, name=None):
+def install_tool(repo_url, name=None, only_clone=False, only_link=False):
     # Handle short GitHub format "user/repo"
     if not repo_url.startswith("http") and not repo_url.startswith("git@") and "/" in repo_url:
         repo_url = f"https://github.com/{repo_url}.git"
@@ -205,15 +205,21 @@ def install_tool(repo_url, name=None):
     # Clone or Pull
     if not TOOLS_DIR.exists(): TOOLS_DIR.mkdir(parents=True, exist_ok=True)
     
-    if target_dir.exists():
-        print(f"  ⬇️  Updating git repository...")
-        if not run_command("git pull", cwd=target_dir, quiet=True):
-            print("  ⚠️  Git pull failed (dirty state?), skipping update.")
-    else:
-        print(f"  ⬇️  Cloning repository...")
-        if not run_command(f"git clone {repo_url} {target_dir}", quiet=True):
-            print("  ❌ Clone failed.")
-            return
+    if not only_link:
+        if target_dir.exists():
+            print(f"  ⬇️  Updating git repository...")
+            if not run_command("git pull", cwd=target_dir, quiet=True):
+                print("  ⚠️  Git pull failed (dirty state?), skipping update.")
+        else:
+            print(f"  ⬇️  Cloning repository...")
+            if not run_command(f"git clone {repo_url} {target_dir}", quiet=True):
+                print("  ❌ Clone failed.")
+                return
+    
+    if only_clone:
+        print(f"  ⏹️  Clone complete. Skipping install/linking (--only-clone).")
+        print(f"     Path: {target_dir}")
+        return
 
     # Discovery & Linking
     found_components = find_components(target_dir)
@@ -279,11 +285,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GitHub AI Tools Installer")
     parser.add_argument("url", nargs="?", help="GitHub Repository URL or user/repo")
     parser.add_argument("--all", action="store_true", help="Update all installed tools")
+    parser.add_argument("--only-clone", action="store_true", help="Only clone/pull, do not link")
+    parser.add_argument("--only-link", action="store_true", help="Only link existing repo, do not pull")
     args = parser.parse_args()
 
     if args.all:
         update_all_tools()
     elif args.url:
-        install_tool(args.url)
+        install_tool(args.url, only_clone=args.only_clone, only_link=args.only_link)
     else:
         parser.print_help()

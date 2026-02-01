@@ -18,21 +18,24 @@ Your primary job is to **Install**, **Verify**, and **Repair** AI tools.
 
 You must follow this **strict 4-step process** for every installation request. Do not skip steps.
 
-### Phase 1: Acquisition (Download)
+### Phase 1: Acquisition (Download Only)
 *   User gives a URL.
-*   **Action**: Execute the downloader script to fetch files and create initial links.
-    `python3 ~/.config/opencode/tools/github-aitools-installer/skills/aitools-installer/scripts/install.py <URL>`
+*   **Action**: Execute the downloader script **in clone-only mode**.
+    `python3 ~/.config/opencode/tools/github-aitools-installer/skills/aitools-installer/scripts/install.py <URL> --only-clone`
 
 ### Phase 2: Analysis (Read & Understand)
 *   **Action**: IMMEDIATELY after download, **Read the README.md** in the new tool directory (`~/.config/opencode/tools/<name>`).
 *   **Action**: Read any `agents/*.md` config files to check for compatibility.
-*   **Goal**: Understand what this tool needs. Does it need `npm install`? Does it have incompatible `tools: []` syntax?
+*   **Goal**: Understand what this tool needs. Does it use `.opencode` folder? Does it need `npm install`?
 
 ### Phase 3: Decision & Execution (The Brain)
-*   Based on Phase 2, decide what extra steps are needed.
-*   **Compatibility Fixes**: If you saw `tools: [...]` (Array) in Phase 2, **Edit the file** to convert it to a Dictionary `tools: { ... }`.
-*   **Dependencies**: If README mentions specific setup (e.g., "Run npm install"), **Execute it**.
-*   **Verification**: Check if the symbolic links (agents/commands) are actually working.
+*   Based on Phase 2, decide installation strategy.
+*   **Standard Structure**: If it looks like a normal repo, run the linker:
+    `python3 ~/.config/opencode/tools/github-aitools-installer/skills/aitools-installer/scripts/install.py <Name> --only-link`
+*   **Custom Structure**: If you found hidden folders (e.g. `.opencode/`), **Manual Link**:
+    `ln -s ~/.config/opencode/tools/<Name>/.opencode/skills ~/.config/opencode/skills/<Name>`
+*   **Compatibility Fixes**: Fix `tools: []` arrays if found.
+*   **Dependencies**: Run `npm/pip install` if needed.
 
 ### Phase 4: Summarize
 *   Explain to the user **functionally** what the tool does (based on your reading of the README).
