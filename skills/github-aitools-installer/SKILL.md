@@ -1,9 +1,9 @@
 ---
-name: github-tools-installer
+name: github-aitools-installer
 description: A universal installer for OpenCode/Codex/Gemini. Automatically installs Agents, Skills, Plugins, Hooks, and Prompts from any GitHub repository.
 ---
 
-# GitHub Tools Installer
+# GitHub AI Tools Installer
 
 Use this skill to install **ANY** GitHub repository as an extension for your AI environment.
 
@@ -20,6 +20,9 @@ install_tool("https://github.com/obra/superpowers")
 
 # Update an existing tool
 install_tool("https://github.com/obra/superpowers")
+
+# Update ALL installed tools
+update_all_tools()
 ```
 
 ## Implementation

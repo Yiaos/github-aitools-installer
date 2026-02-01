@@ -1,4 +1,4 @@
-# GitHub Tools Installer (GitHub 工具安装器)
+# GitHub AI Tools Installer (AI 工具通用安装器)
 
 **AI Agent 的通用包管理器**
 能够将 **任何 GitHub 仓库** 中的 Skills, Agents, Plugins, Commands, Hooks 和 Prompts 安装到您的 AI 环境中 (OpenCode, Codex, Gemini)。
@@ -14,11 +14,12 @@
     *   `agents/` (智能体)
     *   `plugins/` (插件)
     *   `commands/` (指令)
-    *   `hooks/` (钩子 - 新!)
+    *   `hooks/` (钩子)
     *   `mcp/` (MCP 协议服务)
     *   `prompts/` (提示词模板)
-*   **幂等更新**: 再次运行即可自动更新代码 (git pull) 并刷新链接。
-*   **非破坏性**: 在链接前会自动备份已存在的本地目录，防止数据丢失。
+*   **全量更新**: 支持一键更新所有已安装的工具 (`update_all_tools`)。
+*   **安装摘要**: 安装后自动显示工具描述和验证方法。
+*   **非破坏性**: 链接前自动备份冲突的本地目录。
 
 ## 📦 安装方法
 
@@ -27,25 +28,25 @@
 ```bash
 # 1. 克隆到您的 tools 目录
 mkdir -p ~/.config/opencode/tools
-git clone https://github.com/Yiaos/github-tools-installer.git ~/.config/opencode/tools/github-tools-installer
+git clone https://github.com/Yiaos/github-aitools-installer.git ~/.config/opencode/tools/github-aitools-installer
 
 # 2. 手动链接到 OpenCode (仅第一次需要)
 mkdir -p ~/.config/opencode/skills
-ln -s ~/.config/opencode/tools/github-tools-installer/skills/github-tools-installer ~/.config/opencode/skills/github-tools-installer
+ln -s ~/.config/opencode/tools/github-aitools-installer/skills/github-aitools-installer ~/.config/opencode/skills/github-aitools-installer
 ```
 
 ## 🛠 使用指南
 
-安装完成后，直接在该 AI Agent 的对话框中下达命令：
-
+### 1. 安装新工具
+直接在对话中命令：
 > "帮我安装 https://github.com/obra/superpowers"
 
-> "Install https://github.com/wshobson/agents"
+### 2. 检查更新全部
+> "帮我更新所有 AI 工具"
 
-或者作为 Python 脚本手动运行:
-
+或者运行脚本：
 ```bash
-python3 ~/.config/opencode/tools/github-tools-installer/skills/github-tools-installer/scripts/install.py <仓库URL>
+python3 ~/.config/opencode/tools/github-aitools-installer/skills/github-aitools-installer/scripts/install.py --all
 ```
 
 ## 📂 仓库结构
@@ -54,7 +55,7 @@ python3 ~/.config/opencode/tools/github-tools-installer/skills/github-tools-inst
 ├── README.md       # 英文文档
 ├── README_CN.md    # 中文文档
 └── skills/
-    └── github-tools-installer/
+    └── github-aitools-installer/
         ├── SKILL.md
         └── scripts/
             └── install.py
