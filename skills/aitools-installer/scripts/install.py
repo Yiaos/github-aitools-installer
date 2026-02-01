@@ -137,16 +137,70 @@ def get_component_items(path, c_type):
                  items.append(item.stem)
     return sorted(items)
 
+def get_remote_url(repo_dir):
+    try:
+        url = subprocess.check_output(["git", "remote", "get-url", "origin"], cwd=repo_dir, stderr=subprocess.DEVNULL).decode().strip()
+        return url
+    except:
+        return None
+
 def install_tool(repo_url, name=None):
     # Handle short GitHub format "user/repo"
     if not repo_url.startswith("http") and not repo_url.startswith("git@") and "/" in repo_url:
         repo_url = f"https://github.com/{repo_url}.git"
 
-    if not name:
-        name = repo_url.split("/")[-1].replace(".git", "")
+    # Extraction
+    parts = repo_url.rstrip('/').split('/')
+    repo_name_raw = parts[-1].replace(".git", "")
     
-    target_dir = TOOLS_DIR / name
-    print(f"🔧 \033[1mProcessing {name}\033[0m ({repo_url})...")
+    # Try to extract author for fallback
+    author = "unknown"
+    if len(parts) >= 2:
+        author = parts[-2]
+        if ":" in author: # git@github.com:User/Repo
+            author = author.split(":")[-1]
+
+    target_dir = None
+    target_name = name
+
+    if name:
+        # Explicit name provided (e.g. from update_all), trust it
+        target_dir = TOOLS_DIR / name
+    else:
+        # Smart detection logic
+        default_name = repo_name_raw
+        default_dir = TOOLS_DIR / default_name
+        
+        if default_dir.exists():
+            # Check if it's the same repo
+            existing_url = get_remote_url(default_dir)
+            
+            # Loose comparison (ignore .git, protocol) across both
+            clean_new = repo_url.replace(".git", "").lower()
+            clean_existing = (existing_url or "").replace(".git", "").lower()
+            
+            # Does existing url end with author/repo? or match completely?
+            match_suffix = f"/{author.lower()}/{repo_name_raw.lower()}"
+            
+            if clean_existing == clean_new or clean_existing.endswith(match_suffix):
+                # It's the same repo, verify existing link
+                print(f"  🔍 Found existing repository at {default_name}")
+                target_name = default_name
+                target_dir = default_dir
+            else:
+                # Conflict! Different repo with same name.
+                print(f"  ⚠️  Conflict: {default_name} occupied by {existing_url}")
+                alt_name = f"{author}-{repo_name_raw}"
+                print(f"  🔄 Switching to namespaced: {alt_name}")
+                target_name = alt_name
+                target_dir = TOOLS_DIR / alt_name
+        else:
+            # Free slot
+            target_name = default_name
+            target_dir = default_dir
+
+    print(f"🔧 \033[1mProcessing {target_name}\033[0m ({repo_url})...")
+    name = target_name
     
     # Clone or Pull
     if not TOOLS_DIR.exists(): TOOLS_DIR.mkdir(parents=True, exist_ok=True)
