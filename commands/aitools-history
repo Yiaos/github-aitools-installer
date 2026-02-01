@@ -1,0 +1,7 @@
+#!/bin/bash
+# AI Tools History Command
+# Shows installation history and manifest
+
+SCRIPT_DIR="$HOME/.config/opencode/tools/github-aitools-installer/skills/aitools-installer/scripts"
+
+python3 "$SCRIPT_DIR/install_logger.py" "$@"

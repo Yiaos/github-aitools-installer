@@ -6,14 +6,21 @@ import shutil
 import argparse
 from pathlib import Path
 
-# Import validation and transaction systems
+# Import validation, transaction, logging, dependency, and security systems
 try:
     from install_validator import run_validation
     from install_transaction import InstallTransaction
+    from install_logger import InstallLogger
+    from dependency_resolver import check_dependencies, format_dependencies_report
+    from security_scanner import scan_tool_security, format_security_report
     VALIDATION_AVAILABLE = True
-except ImportError:
+    LOGGING_AVAILABLE = True
+    ADVANCED_FEATURES = True
+except ImportError as e:
     VALIDATION_AVAILABLE = False
-    print("⚠️  Validation system not available (missing dependencies)")
+    LOGGING_AVAILABLE = False
+    ADVANCED_FEATURES = False
+    print(f"⚠️  Advanced features not available: {e}")
 
 # Configuration
 TOOLS_DIR = Path("~/.config/opencode/tools").expanduser()
@@ -153,7 +160,7 @@ def get_remote_url(repo_dir):
     except:
         return None
 
-def install_tool(repo_url, name=None, only_clone=False, only_link=False, validate=True, backup=True):
+def install_tool(repo_url, name=None, only_clone=False, only_link=False, validate=True, backup=True, dry_run=False, interactive=False):
     # Handle short GitHub format "user/repo"
     if not repo_url.startswith("http") and not repo_url.startswith("git@") and "/" in repo_url:
         repo_url = f"https://github.com/{repo_url}.git"
@@ -211,6 +218,30 @@ def install_tool(repo_url, name=None, only_clone=False, only_link=False, validat
     print(f"🔧 \033[1mProcessing {target_name}\033[0m ({repo_url})...")
     name = target_name
     
+    # Dry-run preview
+    if dry_run:
+        print(f"\n🔍 \033[1mDry-Run Preview\033[0m")
+        print(f"\nWould perform:")
+        if not only_link:
+            if target_dir.exists():
+                print(f"  ✓ Update repository (git pull)")
+            else:
+                print(f"  ✓ Clone repository to {target_dir}")
+        if not only_clone:
+            print(f"  ✓ Scan for components (skills, agents, commands, etc.)")
+            print(f"  ✓ Create symlinks for all environments")
+            print(f"  ✓ Run validation checks")
+        print(f"\nNo changes will be made in dry-run mode.")
+        print("-" * 50)
+        return True
+    
+    # Interactive confirmation
+    if interactive and not only_clone:
+        response = input(f"\nInstall {name}? [y/N]: ")
+        if response.lower() != 'y':
+            print("  ⏹️  Installation cancelled")
+            return False
+    
     # Clone or Pull
     if not TOOLS_DIR.exists(): TOOLS_DIR.mkdir(parents=True, exist_ok=True)
     
@@ -228,7 +259,14 @@ def install_tool(repo_url, name=None, only_clone=False, only_link=False, validat
     if only_clone:
         print(f"  ⏹️  Clone complete. Skipping install/linking (--only-clone).")
         print(f"     Path: {target_dir}")
-        return
+        
+        # Show dependencies and security info for awareness
+        if ADVANCED_FEATURES:
+            deps, conflicts = check_dependencies(target_dir)
+            if deps or conflicts:
+                print(f"\n{format_dependencies_report(deps, conflicts)}")
+        
+        return True
 
     # Discovery & Linking
     found_components = find_components(target_dir)
@@ -292,6 +330,43 @@ def install_tool(repo_url, name=None, only_clone=False, only_link=False, validat
         
         print(f"\n✅ \033[32mValidation passed!\033[0m")
     
+    # Phase 5: Logging (NEW)
+    if LOGGING_AVAILABLE and not only_clone:
+        try:
+            logger = InstallLogger()
+            
+            # Extract version (git commit)
+            version = None
+            try:
+                import subprocess
+                result = subprocess.check_output(
+                    ["git", "rev-parse", "--short", "HEAD"],
+                    cwd=target_dir,
+                    stderr=subprocess.DEVNULL
+                )
+                version = result.decode().strip()
+            except:
+                pass
+            
+            # Determine environments
+            environments = []
+            for env in ['opencode', 'codex', 'gemini']:
+                env_dir = Path.home() / f".{env if env != 'opencode' else 'config/opencode'}"
+                if env_dir.exists():
+                    environments.append(env)
+            
+            # Log installation
+            logger.log_installation(
+                tool_name=name,
+                url=repo_url,
+                version=version,
+                validation_passed=validation_passed if validate else True,
+                environments=environments,
+                components=installed_summary
+            )
+        except Exception as e:
+            print(f"  ⚠️  Logging failed: {e}")
+    
     return True
 
 def update_all_tools():
@@ -315,6 +390,8 @@ if __name__ == "__main__":
     parser.add_argument("--no-validate", action="store_true", help="Skip post-installation validation")
     parser.add_argument("--backup", action="store_true", default=True, help="Create backup before installation")
     parser.add_argument("--no-backup", dest='backup', action="store_false", help="Skip backup creation")
+    parser.add_argument("--dry-run", action="store_true", help="Preview changes without executing")
+    parser.add_argument("--interactive", action="store_true", help="Ask for confirmation before each step")
     args = parser.parse_args()
 
     if args.all:
@@ -328,7 +405,9 @@ if __name__ == "__main__":
                     only_clone=args.only_clone, 
                     only_link=args.only_link,
                     validate=not args.no_validate,
-                    backup=False  # Transaction handles backup
+                    backup=False,  # Transaction handles backup
+                    dry_run=args.dry_run,
+                    interactive=args.interactive
                 )
                 if success:
                     tx.commit()
@@ -339,7 +418,9 @@ if __name__ == "__main__":
                 only_clone=args.only_clone, 
                 only_link=args.only_link,
                 validate=not args.no_validate,
-                backup=args.backup
+                backup=args.backup,
+                dry_run=args.dry_run,
+                interactive=args.interactive
             )
     else:
         parser.print_help()
