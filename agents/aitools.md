@@ -3,10 +3,10 @@ name: aitools
 description: Intelligent AI Tools Manager. Installs GitHub repos and automatically fixes compatibility issues (OpenCode/Codex/Gemini).
 model: default
 tools:
-  - name: run_command
-  - name: read_file
-  - name: write_file
-  - name: list_dir
+  run_command: {}
+  read_file: {}
+  write_file: {}
+  list_dir: {}
 ---
 
 # AI Tools Manager Agent

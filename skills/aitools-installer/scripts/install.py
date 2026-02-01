@@ -6,6 +6,15 @@ import shutil
 import argparse
 from pathlib import Path
 
+# Import validation and transaction systems
+try:
+    from install_validator import run_validation
+    from install_transaction import InstallTransaction
+    VALIDATION_AVAILABLE = True
+except ImportError:
+    VALIDATION_AVAILABLE = False
+    print("⚠️  Validation system not available (missing dependencies)")
+
 # Configuration
 TOOLS_DIR = Path("~/.config/opencode/tools").expanduser()
 OPENCODE_DIR = Path("~/.config/opencode").expanduser()
@@ -144,7 +153,7 @@ def get_remote_url(repo_dir):
     except:
         return None
 
-def install_tool(repo_url, name=None, only_clone=False, only_link=False):
+def install_tool(repo_url, name=None, only_clone=False, only_link=False, validate=True, backup=True):
     # Handle short GitHub format "user/repo"
     if not repo_url.startswith("http") and not repo_url.startswith("git@") and "/" in repo_url:
         repo_url = f"https://github.com/{repo_url}.git"
@@ -268,6 +277,22 @@ def install_tool(repo_url, name=None, only_clone=False, only_link=False):
         print(f"   ▶ Check plugins: \033[33m/plugin list\033[0m")
 
     print("-" * 50)
+    
+    # Phase 4: Validation (NEW)
+    if validate and VALIDATION_AVAILABLE and not only_clone:
+        print(f"\n🔍 \033[1mPhase 4: Validation\033[0m")
+        validation_passed = run_validation(name)
+        
+        if not validation_passed:
+            print(f"\n❌ \033[31mValidation failed!\033[0m")
+            print(f"   Installation completed but has issues.")
+            print(f"   Review errors above and fix manually, or run:")
+            print(f"   \033[33mpython install_transaction.py rollback {name}\033[0m")
+            return False
+        
+        print(f"\n✅ \033[32mValidation passed!\033[0m")
+    
+    return True
 
 def update_all_tools():
     print(f"🚀 Batch Updating ALL tools in {TOOLS_DIR}...")
@@ -287,11 +312,34 @@ if __name__ == "__main__":
     parser.add_argument("--all", action="store_true", help="Update all installed tools")
     parser.add_argument("--only-clone", action="store_true", help="Only clone/pull, do not link")
     parser.add_argument("--only-link", action="store_true", help="Only link existing repo, do not pull")
+    parser.add_argument("--no-validate", action="store_true", help="Skip post-installation validation")
+    parser.add_argument("--backup", action="store_true", default=True, help="Create backup before installation")
+    parser.add_argument("--no-backup", dest='backup', action="store_false", help="Skip backup creation")
     args = parser.parse_args()
 
     if args.all:
         update_all_tools()
     elif args.url:
-        install_tool(args.url, only_clone=args.only_clone, only_link=args.only_link)
+        # Use transaction wrapper if available and not in clone-only mode
+        if VALIDATION_AVAILABLE and not args.only_clone and args.backup:
+            with InstallTransaction(args.url.split('/')[-1].replace('.git', ''), backup=args.backup) as tx:
+                success = install_tool(
+                    args.url, 
+                    only_clone=args.only_clone, 
+                    only_link=args.only_link,
+                    validate=not args.no_validate,
+                    backup=False  # Transaction handles backup
+                )
+                if success:
+                    tx.commit()
+                # Rollback handled automatically by transaction on failure
+        else:
+            install_tool(
+                args.url, 
+                only_clone=args.only_clone, 
+                only_link=args.only_link,
+                validate=not args.no_validate,
+                backup=args.backup
+            )
     else:
         parser.print_help()
