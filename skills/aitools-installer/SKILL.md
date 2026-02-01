@@ -1,5 +1,5 @@
 ---
-name: github-aitools-installer
+name: aitools-installer
 description: A universal installer for OpenCode/Codex/Gemini. Automatically installs Agents, Skills, Plugins, Hooks, and Prompts from any GitHub repository.
 ---
 
