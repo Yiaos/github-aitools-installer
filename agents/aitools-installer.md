@@ -1,5 +1,5 @@
 ---
-name: aitools
+name: aitools-installer
 description: Intelligent AI Tools Manager. Installs GitHub repos and automatically fixes compatibility issues (OpenCode/Codex/Gemini).
 model: default
 tools:
