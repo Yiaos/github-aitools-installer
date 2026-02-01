@@ -117,6 +117,26 @@ def link_component(source_path, component_type, tool_name):
             
     return linked_to
 
+def get_component_items(path, c_type):
+    """List specific items (skills/agents names) within a component directory."""
+    items = []
+    if not path.is_dir(): return items
+    
+    for item in path.iterdir():
+        if item.name.startswith('.'): continue
+        if c_type in ['commands']:
+            # For commands, any file that is executable or script is a command
+            if item.is_file():
+                items.append(item.name)
+        elif c_type in ['skills', 'agents', 'plugins', 'mcp']:
+            # Usually directories
+            if item.is_dir():
+                items.append(item.name)
+            # Agents/Skills can sometimes be single files
+            elif item.is_file() and item.suffix in ['.md', '.json', '.py', '.js']:
+                 items.append(item.stem)
+    return sorted(items)
+
 def install_tool(repo_url, name=None):
     # Handle short GitHub format "user/repo"
     if not repo_url.startswith("http") and not repo_url.startswith("git@") and "/" in repo_url:
@@ -143,7 +163,7 @@ def install_tool(repo_url, name=None):
 
     # Discovery & Linking
     found_components = find_components(target_dir)
-    installed_summary = {}
+    installed_summary = {} # {type: {locations: [], items: []}}
 
     print("  🔗 Linking components...")
     if not found_components:
@@ -152,7 +172,8 @@ def install_tool(repo_url, name=None):
     for c_type, c_path in found_components.items():
         links = link_component(c_path, c_type, name)
         if links:
-            installed_summary[c_type] = links
+            items = get_component_items(c_path, c_type)
+            installed_summary[c_type] = {'locations': links, 'items': items}
             print(f"     ✅ Linked \033[36m{c_type}\033[0m from {c_path.relative_to(target_dir)}")
 
     # Summary Output
@@ -164,18 +185,28 @@ def install_tool(repo_url, name=None):
     if not installed_summary:
         print("   (No active components found. Is this a raw library?)")
     else:
-        for c_type, locations in installed_summary.items():
-            print(f"   • \033[1m{c_type.capitalize()}\033[0m ({len(locations)} locations)")
+        for c_type, data in installed_summary.items():
+            item_list = ", ".join(data['items'][:5]) # Show first 5
+            if len(data['items']) > 5: item_list += f", +{len(data['items'])-5} more"
+            print(f"   • \033[1m{c_type.capitalize()}\033[0m: {item_list if item_list else '(Standard link)'}")
             
     print("\n🚀 \033[1mHow to Validate:\033[0m")
-    if "skills" in installed_summary:
-        print(f"   ▶ type: \033[33m/skill list\033[0m to check if '{name}' is loaded.")
-    if "commands" in installed_summary:
-        print(f"   ▶ type: \033[33m/{name} --help\033[0m (if it supports cli args).")
-    if "agents" in installed_summary:
-        print(f"   ▶ type: \033[33m@{name}\033[0m to chat with this agent.")
+    
+    if "skills" in installed_summary and installed_summary["skills"]['items']:
+        ex_skill = installed_summary["skills"]['items'][0]
+        print(f"   ▶ Skill: Ask \033[33m'Help me using {ex_skill}'\033[0m or run \033[33m/skill run {ex_skill}\033[0m")
+    
+    if "agents" in installed_summary and installed_summary["agents"]['items']:
+        ex_agent = installed_summary["agents"]['items'][0]
+        print(f"   ▶ Agent: Type \033[33m@{ex_agent}\033[0m to switch to this agent.")
+
+    if "commands" in installed_summary and installed_summary["commands"]['items']:
+        ex_cmd = installed_summary["commands"]['items'][0]
+        print(f"   ▶ Command: Type \033[33m/{ex_cmd} --help\033[0m")
+        
     if "plugins" in installed_summary:
-        print(f"   ▶ Use \033[33m/plugin list\033[0m to verify it's active.")
+        print(f"   ▶ Check plugins: \033[33m/plugin list\033[0m")
+
     print("-" * 50)
 
 def update_all_tools():
