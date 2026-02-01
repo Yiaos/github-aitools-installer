@@ -99,6 +99,10 @@ def link_directory(target_dir, name):
     return linked_components
 
 def install_tool(repo_url, name=None):
+    # Handle short GitHub format "user/repo"
+    if not repo_url.startswith("http") and not repo_url.startswith("git@") and "/" in repo_url:
+        repo_url = f"https://github.com/{repo_url}.git"
+        
     if not name:
         name = repo_url.split("/")[-1].replace(".git", "")
     

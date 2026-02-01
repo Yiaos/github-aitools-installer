@@ -1,0 +1,8 @@
+#!/bin/bash
+# Wrapper enabling /aitools slash command in OpenCode
+
+# Usage:
+# /aitools OthmanAdi/planning-with-files  -> Installs/Updates that repo
+# /aitools --all                          -> Updates all tools
+
+python3 ~/.config/opencode/tools/github-aitools-installer/skills/github-aitools-installer/scripts/install.py "$@"
